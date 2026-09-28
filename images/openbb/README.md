@@ -52,6 +52,8 @@ docker pull ghcr.io/buildorbit/platform-images/openbb@sha256:<published-digest>
 
 For Kubernetes, set the Helm chart's `image.digest` and leave `image.tag` unused. Tags are convenient aliases; the digest is the immutable deployment reference.
 
+Semantic image tags are created from GitHub Releases. Publishing a release tagged `v0.1.0` publishes `0.1.0`, `0.1`, and `0` in addition to the SHA reference. `latest` is only updated by the protected `main` workflow.
+
 ## Image manifest
 
 [`image.json`](image.json) is the contract consumed by the generic workflow:
