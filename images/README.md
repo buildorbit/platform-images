@@ -32,6 +32,7 @@ The manifest uses repository-relative paths and is the source of truth for the g
 Adding another image should require only the new directory, its manifest, and any matching chart/test files. The workflow discovers and validates all manifests automatically.
 
 Each image manifest owns its semantic release version. Bump `images/<name>/image.json` and its matching `Chart.yaml` together, then create a GitHub Release tagged `<name>-vMAJOR.MINOR.PATCH`, for example `openbb-v0.1.0`. The generic workflow publishes only that image and chart; application dependency versions remain separate.
+For pull requests and normal pushes, the build matrix is narrowed to image definitions touched by the change. Shared workflow or repository scripts changes intentionally validate every image; published releases also validate every image before publishing.
 
 When an image manifest points to a chart, the same artifact-specific release also packages and publishes that chart to the repository's GHCR OCI path at `ghcr.io/<owner>/<repository>/charts/<name>`. The artifact prefix and leading `v` are removed for the Helm chart version, so release `openbb-v1.2.3` produces chart version `1.2.3`.
 
