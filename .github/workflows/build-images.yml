@@ -139,6 +139,36 @@ jobs:
             type=sha,format=long
             type=raw,value=${{ inputs.release_tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' }}
 
+      - name: Resolve chart release version
+        if: matrix.chart != '' && ((github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'workflow_dispatch' && inputs.publish == true && inputs.release_tag != ''))
+        id: chart_version
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag must be a semantic version such as v1.2.3; got: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Package and publish Helm chart
+        if: matrix.chart != '' && ((github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'workflow_dispatch' && inputs.publish == true && inputs.release_tag != ''))
+        env:
+          CHART_PATH: ${{ matrix.chart }}
+          CHART_VERSION: ${{ steps.chart_version.outputs.version }}
+          CHART_REPOSITORY: ghcr.io/${{ github.repository }}/charts
+        run: |
+          package_dir="$RUNNER_TEMP/helm-package"
+          mkdir -p "$package_dir"
+          helm package "$CHART_PATH" --destination "$package_dir" --version "$CHART_VERSION"
+          helm push "$package_dir/${{ matrix.name }}-${CHART_VERSION}.tgz" "oci://${CHART_REPOSITORY}"
+          {
+            echo "## Published ${{ matrix.name }} Helm chart"
+            echo
+            echo "\`${CHART_REPOSITORY}/${{ matrix.name }}:${CHART_VERSION}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Build and publish
         id: build
         uses: docker/build-push-action@v6

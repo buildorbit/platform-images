@@ -31,3 +31,5 @@ The manifest uses repository-relative paths and is the source of truth for the g
 Adding another image should require only the new directory, its manifest, and any matching chart/test files. The workflow discovers and validates all manifests automatically.
 
 Image versions are released consistently through GitHub Release tags in the form `vMAJOR.MINOR.PATCH`. The generic workflow derives the immutable semver tags from that release event; application dependency versions remain owned by each image definition.
+
+When an image manifest points to a chart, the same release also packages and publishes that chart to the repository's GHCR OCI path at `ghcr.io/<owner>/<repository>/charts/<name>`. The leading `v` is removed for the Helm chart version, so release `v1.2.3` produces chart version `1.2.3`.
