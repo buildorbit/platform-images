@@ -1,0 +1,12 @@
+apiVersion: v2
+name: openbb
+description: Deploy the curated, non-root OpenBB Platform API image.
+type: application
+version: 0.1.0
+appVersion: "4.7.2"
+home: https://github.com/buildorbit/platform-images
+sources:
+  - https://github.com/OpenBB-finance/OpenBB
+maintainers:
+  - name: BuildOrbit
+

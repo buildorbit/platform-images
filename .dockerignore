@@ -1,0 +1,10 @@
+.git
+.github
+.agents
+.codex
+.DS_Store
+charts
+tests
+docs
+*.md
+

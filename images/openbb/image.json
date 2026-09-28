@@ -1,0 +1,13 @@
+{
+  "name": "openbb",
+  "repository": "ghcr.io/buildorbit/platform-images/openbb",
+  "context": ".",
+  "dockerfile": "images/openbb/Dockerfile",
+  "platforms": [
+    "linux/amd64"
+  ],
+  "validation_platform": "linux/amd64",
+  "chart": "charts/openbb",
+  "smoke_test": "images/openbb/tests/smoke.sh"
+}
+
