@@ -1,0 +1,153 @@
+name: Build platform images
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/build-images.yml"
+      - "images/**"
+      - "charts/**"
+      - "scripts/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/build-images.yml"
+      - "images/**"
+      - "charts/**"
+      - "scripts/**"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish images from the approved release workflow
+        required: true
+        default: false
+        type: boolean
+      release_tag:
+        description: Optional tag to apply to a manually approved release
+        required: false
+        type: string
+
+jobs:
+  discover:
+    name: Discover image definitions
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.images.outputs.matrix }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate manifests and build matrix
+        id: images
+        run: python3 scripts/image-matrix.py
+
+  build-scan-smoke:
+    name: Build, scan, and smoke test (${{ matrix.name }})
+    needs: discover
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    permissions:
+      contents: read
+    env:
+      CI_TAG: platform-images/${{ matrix.name }}:ci-${{ github.sha }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for validation
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ matrix.validation_platform }}
+          load: true
+          tags: ${{ env.CI_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run image smoke test
+        if: matrix.smoke_test != ''
+        run: bash "${{ matrix.smoke_test }}" "${CI_TAG}"
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.CI_TAG }}
+          format: table
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
+
+      - name: Lint Helm chart
+        if: matrix.chart != ''
+        run: helm lint "${{ matrix.chart }}"
+
+  publish:
+    name: Publish image (${{ matrix.name }})
+    needs: [discover, build-scan-smoke]
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.publish == true)
+    runs-on: ubuntu-24.04
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ matrix.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=long
+            type=raw,value=${{ inputs.release_tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' }}
+
+      - name: Build and publish
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Record immutable digest
+        run: |
+          {
+            echo "## Published ${{ matrix.name }} image"
+            echo
+            echo "\`${{ matrix.repository }}@${{ steps.build.outputs.digest }}\`"
+            echo
+            echo 'Deploy this digest through the corresponding chart with `--set image.digest=...`.'
+          } >> "$GITHUB_STEP_SUMMARY"
