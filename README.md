@@ -68,4 +68,4 @@ helm upgrade --install openbb oci://ghcr.io/buildorbit/platform-images/charts/op
 
 The chart version comes from the release tag; the chart's `appVersion` continues to describe the upstream application version.
 
-To control GHCR storage, each successful publish retains semantic release package versions and the newly published package version. Older CI/SHA-only package versions are deleted from GHCR.
+To control GHCR storage, each successful publish retains semantic release package versions and the newly published package version. Older tagged CI/SHA-only package versions are deleted from GHCR. Untagged OCI child manifests and attestations are retained because image indexes reference them.

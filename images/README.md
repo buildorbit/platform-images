@@ -36,4 +36,4 @@ For pull requests and normal pushes, the build matrix is narrowed to image defin
 
 When an image manifest points to a chart, the same artifact-specific release also packages and publishes that chart to the repository's GHCR OCI path at `ghcr.io/<owner>/<repository>/charts/<name>`. The artifact prefix and leading `v` are removed for the Helm chart version, so release `openbb-v1.2.3` produces chart version `1.2.3`.
 
-The generic publish workflow keeps semantic release package versions and the newly published package version. Older non-semantic CI/SHA versions are removed to bound registry storage; deploy long-lived environments by a published semantic tag or digest.
+The generic publish workflow keeps semantic release package versions and the newly published package version. Older tagged non-semantic CI/SHA versions are removed to bound registry storage, while untagged OCI child manifests and attestations are retained because image indexes reference them; deploy long-lived environments by a published semantic tag or digest.

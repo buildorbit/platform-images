@@ -10,6 +10,9 @@ encoded_package="$(jq -rn --arg value "$PACKAGE_NAME" '$value | @uri')"
 versions_file="$(mktemp)"
 trap 'rm -f "$versions_file"' EXIT
 
+# OCI indexes reference untagged child manifests and attestations. Delete only
+# old tagged non-semantic versions so those referenced manifests remain intact.
+
 gh api \
   --paginate \
   --slurp \
@@ -31,10 +34,12 @@ done < <(
   jq -r --arg keep "$KEEP_VERSION_NAME" '
     .[][]
     | select(.name != $keep)
-    | select([
-        .metadata.container.tags[]?
-        | test("^(0|[1-9][0-9]*)(\\.(0|[1-9][0-9]*)){0,2}(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$")
-      ] | length == 0)
+    | (.metadata.container.tags // []) as $tags
+    | select(($tags | length) > 0)
+    | select(any(
+        $tags[];
+        test("^(0|[1-9][0-9]*)(\\.(0|[1-9][0-9]*)){0,2}(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$")
+      ) | not)
     | .id
   ' "$versions_file"
 )
