@@ -1,5 +1,6 @@
 {
   "name": "openbb",
+  "version": "0.1.0",
   "repository": "ghcr.io/buildorbit/platform-images/openbb",
   "context": ".",
   "dockerfile": "images/openbb/Dockerfile",
@@ -10,4 +11,3 @@
   "chart": "charts/openbb",
   "smoke_test": "images/openbb/tests/smoke.sh"
 }
-

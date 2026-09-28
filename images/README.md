@@ -20,6 +20,7 @@ The manifest uses repository-relative paths and is the source of truth for the g
 | Field | Required | Meaning |
 | --- | --- | --- |
 | `name` | yes | Lowercase image directory and local CI tag name |
+| `version` | yes | Current semantic release version for this image and matching chart |
 | `repository` | yes | Published container repository, without a tag or digest |
 | `context` | yes | Docker build context |
 | `dockerfile` | yes | Dockerfile path |
@@ -30,8 +31,8 @@ The manifest uses repository-relative paths and is the source of truth for the g
 
 Adding another image should require only the new directory, its manifest, and any matching chart/test files. The workflow discovers and validates all manifests automatically.
 
-Image versions are released consistently through GitHub Release tags in the form `vMAJOR.MINOR.PATCH`. The generic workflow derives the immutable semver tags from that release event; application dependency versions remain owned by each image definition.
+Each image manifest owns its semantic release version. Bump `images/<name>/image.json` and its matching `Chart.yaml` together, then create a GitHub Release tagged `<name>-vMAJOR.MINOR.PATCH`, for example `openbb-v0.1.0`. The generic workflow publishes only that image and chart; application dependency versions remain separate.
 
-When an image manifest points to a chart, the same release also packages and publishes that chart to the repository's GHCR OCI path at `ghcr.io/<owner>/<repository>/charts/<name>`. The leading `v` is removed for the Helm chart version, so release `v1.2.3` produces chart version `1.2.3`.
+When an image manifest points to a chart, the same artifact-specific release also packages and publishes that chart to the repository's GHCR OCI path at `ghcr.io/<owner>/<repository>/charts/<name>`. The artifact prefix and leading `v` are removed for the Helm chart version, so release `openbb-v1.2.3` produces chart version `1.2.3`.
 
-The generic publish workflow keeps only the newly published GHCR package version for each image and chart. Older image tags and chart releases are removed to bound registry storage; deploy long-lived environments by the current published digest.
+The generic publish workflow keeps semantic release package versions and the newly published package version. Older non-semantic CI/SHA versions are removed to bound registry storage; deploy long-lived environments by a published semantic tag or digest.
