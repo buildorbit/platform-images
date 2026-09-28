@@ -23,7 +23,7 @@ on:
         default: false
         type: boolean
       release_tag:
-        description: Optional semantic tag to apply to a manually approved release, such as 1.2.3
+        description: Optional artifact release tag, such as openbb-v1.2.3
         required: false
         type: string
   release:
@@ -43,9 +43,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
+          fetch-depth: 0
 
       - name: Validate manifests and build matrix
         id: images
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
         run: python3 scripts/image-matrix.py
 
   build-scan-smoke:
@@ -126,6 +129,30 @@ jobs:
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Resolve artifact release
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.publish == true && inputs.release_tag != '')
+        id: release
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
+          ARTIFACT_NAME: ${{ matrix.name }}
+          ARTIFACT_VERSION: ${{ matrix.version }}
+        run: |
+          expected_prefix="${ARTIFACT_NAME}-v"
+          if [[ "$RELEASE_TAG" != "$expected_prefix"* ]]; then
+            echo "Release tag must start with ${expected_prefix}; got: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          version="${RELEASE_TAG#"$expected_prefix"}"
+          if [[ "$version" != "$ARTIFACT_VERSION" ]]; then
+            echo "Release version ${version} does not match ${ARTIFACT_NAME} manifest version ${ARTIFACT_VERSION}" >&2
+            exit 1
+          fi
+          base_version="${version%%[-+]*}"
+          IFS=. read -r major minor patch <<< "$base_version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "major=$major" >> "$GITHUB_OUTPUT"
+          echo "major_minor=$major.$minor" >> "$GITHUB_OUTPUT"
+
       - name: Generate image metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -133,31 +160,17 @@ jobs:
           images: ${{ matrix.repository }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
-            type=semver,pattern={{major}},enable=${{ github.event_name == 'release' }}
+            type=raw,value=${{ steps.release.outputs.version }},enable=${{ steps.release.outputs.version != '' }}
+            type=raw,value=${{ steps.release.outputs.major_minor }},enable=${{ steps.release.outputs.major_minor != '' }}
+            type=raw,value=${{ steps.release.outputs.major }},enable=${{ steps.release.outputs.major != '' }}
             type=sha,format=long
-            type=raw,value=${{ inputs.release_tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' }}
-
-      - name: Resolve chart release version
-        if: matrix.chart != '' && ((github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'workflow_dispatch' && inputs.publish == true && inputs.release_tag != ''))
-        id: chart_version
-        env:
-          RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
-        run: |
-          version="${RELEASE_TAG#v}"
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
-            echo "Release tag must be a semantic version such as v1.2.3; got: $RELEASE_TAG" >&2
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Package and publish Helm chart
-        if: matrix.chart != '' && ((github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'workflow_dispatch' && inputs.publish == true && inputs.release_tag != ''))
+        if: matrix.chart != '' && steps.release.outputs.version != ''
         id: chart
         env:
           CHART_PATH: ${{ matrix.chart }}
-          CHART_VERSION: ${{ steps.chart_version.outputs.version }}
+          CHART_VERSION: ${{ steps.release.outputs.version }}
           CHART_REPOSITORY: ghcr.io/${{ github.repository }}/charts
         run: |
           package_dir="$RUNNER_TEMP/helm-package"
@@ -176,7 +189,7 @@ jobs:
             echo
             echo "\`${CHART_REPOSITORY}/${{ matrix.name }}:${CHART_VERSION}\`"
             echo
-            echo "Keeping only package version \`${chart_digest}\` in GHCR."
+            echo "Retaining current and semantic package versions in GHCR; current digest: \`${chart_digest}\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build and publish

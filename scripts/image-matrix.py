@@ -13,12 +13,18 @@ ROOT = Path(__file__).resolve().parents[1]
 NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 REQUIRED_FIELDS = {
     "name",
+    "version",
     "repository",
     "context",
     "dockerfile",
     "platforms",
     "validation_platform",
 }
+SEMVER_PATTERN = re.compile(
+    r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
+    r"(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?"
+    r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
+)
 
 
 def repo_path(value: str, field: str, manifest: Path) -> Path:
@@ -43,6 +49,10 @@ def load_manifest(manifest: Path) -> dict[str, object]:
         raise ValueError(f"{manifest}: name must contain lowercase letters, numbers, and hyphens")
     if name != manifest.parent.name:
         raise ValueError(f"{manifest}: name must match its image directory")
+
+    version = data["version"]
+    if not isinstance(version, str) or not SEMVER_PATTERN.fullmatch(version):
+        raise ValueError(f"{manifest}: version must be a semantic version")
 
     platforms = data["platforms"]
     if not isinstance(platforms, list) or not platforms or not all(
@@ -69,6 +79,15 @@ def load_manifest(manifest: Path) -> dict[str, object]:
             path = repo_path(value, optional_path, manifest)
             if optional_path == "chart":
                 valid_path = path.is_dir() and (path / "Chart.yaml").is_file()
+                if valid_path:
+                    chart_text = (path / "Chart.yaml").read_text(encoding="utf-8")
+                    chart_match = re.search(
+                        r"^version:\s*[\"']?([^\"'\s#]+)", chart_text, re.MULTILINE
+                    )
+                    if not chart_match or chart_match.group(1) != version:
+                        raise ValueError(
+                            f"{manifest}: chart version must match image version {version}"
+                        )
             else:
                 valid_path = path.is_file()
             if not valid_path:
@@ -80,6 +99,7 @@ def load_manifest(manifest: Path) -> dict[str, object]:
 
     return {
         "name": name,
+        "version": version,
         "repository": repository,
         "context": data["context"],
         "dockerfile": data["dockerfile"],
@@ -90,12 +110,39 @@ def load_manifest(manifest: Path) -> dict[str, object]:
     }
 
 
+def release_image_names(entries: list[dict[str, object]]) -> set[str] | None:
+    """Select the image named by an artifact-specific release tag."""
+
+    release_tag = os.environ.get("RELEASE_TAG")
+    if not release_tag:
+        return None
+
+    all_names = {str(entry["name"]) for entry in entries}
+    for entry in entries:
+        prefix = f"{entry['name']}-v"
+        if release_tag.startswith(prefix):
+            version = release_tag[len(prefix) :]
+            if not SEMVER_PATTERN.fullmatch(version):
+                raise ValueError(f"{release_tag}: release tag must contain a semantic version")
+            if version != entry["version"]:
+                raise ValueError(
+                    f"{release_tag}: release version does not match {entry['name']} version {entry['version']}"
+                )
+            return {str(entry["name"])}
+
+    names = ", ".join(sorted(all_names))
+    raise ValueError(f"{release_tag}: release tag must be <image>-v<version>; known images: {names}")
+
+
 def main() -> None:
     manifests = sorted((ROOT / "images").glob("*/image.json"))
     if not manifests:
         raise ValueError("no image manifests found under images/*/image.json")
 
     entries = [load_manifest(manifest) for manifest in manifests]
+    selected_names = release_image_names(entries)
+    if selected_names is not None:
+        entries = [entry for entry in entries if entry["name"] in selected_names]
     matrix = json.dumps({"include": entries}, separators=(",", ":"))
     github_output = os.environ.get("GITHUB_OUTPUT")
     if github_output:

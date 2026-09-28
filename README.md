@@ -44,11 +44,20 @@ Do not commit secrets, provider API keys, private infrastructure details, or dep
 
 ## Image releases
 
-The workflow publishes immutable SHA references for every build. It also publishes semantic tags for GitHub Releases: publishing a release with tag `v0.1.0` produces `0.1.0`, `0.1`, and `0` tags for each image. The `latest` tag is reserved for successful builds from `main`.
+The workflow publishes immutable SHA references for every build. Each image has its own semantic version in `images/<name>/image.json`; publishing a release such as `openbb-v0.1.0` produces `0.1.0`, `0.1`, and `0` tags only for OpenBB. The `latest` tag is reserved for successful builds from `main`.
+
+Use the repository helper to bump an artifact and its matching chart together:
+
+```sh
+python3 scripts/bump-version.py openbb patch
+git commit -am "chore(openbb): release 0.1.1"
+# Push and merge the version bump commit before creating the release.
+gh release create openbb-v0.1.1 --generate-notes --target main
+```
 
 The semantic image version is independent of the upstream application version. For example, the OpenBB package version remains documented in [`images/openbb/README.md`](images/openbb/README.md), while the curated image can release as `0.1.0`, `0.1.1`, and so on.
 
-Images with a matching Helm chart also publish an OCI chart from the same GitHub Release. A release tagged `v0.1.0` publishes `oci://ghcr.io/buildorbit/platform-images/charts/openbb` at chart version `0.1.0`:
+Images with a matching Helm chart also publish an OCI chart from the same artifact-specific GitHub Release. A release tagged `openbb-v0.1.0` publishes `oci://ghcr.io/buildorbit/platform-images/charts/openbb` at chart version `0.1.0`:
 
 ```sh
 helm upgrade --install openbb oci://ghcr.io/buildorbit/platform-images/charts/openbb \
@@ -59,4 +68,4 @@ helm upgrade --install openbb oci://ghcr.io/buildorbit/platform-images/charts/op
 
 The chart version comes from the release tag; the chart's `appVersion` continues to describe the upstream application version.
 
-To control GHCR storage, each successful publish retains only the newly published image package version and, when present, chart package version. Older image tags, release versions, and digests are deleted from GHCR.
+To control GHCR storage, each successful publish retains semantic release package versions and the newly published package version. Older CI/SHA-only package versions are deleted from GHCR.

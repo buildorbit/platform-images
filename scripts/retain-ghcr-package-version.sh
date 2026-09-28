@@ -27,4 +27,14 @@ while IFS= read -r version_id; do
   gh api \
     --method DELETE \
     "/orgs/${GITHUB_REPOSITORY_OWNER}/packages/container/${encoded_package}/versions/${version_id}"
-done < <(jq -r --arg keep "$KEEP_VERSION_NAME" '.[][] | select(.name != $keep) | .id' "$versions_file")
+done < <(
+  jq -r --arg keep "$KEEP_VERSION_NAME" '
+    .[][]
+    | select(.name != $keep)
+    | select([
+        .metadata.container.tags[]?
+        | test("^(0|[1-9][0-9]*)(\\.(0|[1-9][0-9]*)){0,2}(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$")
+      ] | length == 0)
+    | .id
+  ' "$versions_file"
+)
