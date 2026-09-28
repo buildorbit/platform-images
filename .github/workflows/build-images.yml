@@ -195,7 +195,7 @@ jobs:
             echo
             echo "\`${CHART_REPOSITORY}/${{ matrix.name }}:${CHART_VERSION}\`"
             echo
-            echo "Retaining current and semantic package versions in GHCR; current digest: \`${chart_digest}\`."
+            echo "Retaining current/semantic packages and untagged OCI child manifests in GHCR; current digest: \`${chart_digest}\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build and publish
