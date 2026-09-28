@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -134,13 +135,51 @@ def release_image_names(entries: list[dict[str, object]]) -> set[str] | None:
     raise ValueError(f"{release_tag}: release tag must be <image>-v<version>; known images: {names}")
 
 
+def changed_image_names(all_names: set[str]) -> set[str] | None:
+    """Return images touched by a diff, or None when the full matrix is required."""
+
+    base_sha = os.environ.get("CHANGE_BASE_SHA")
+    head_sha = os.environ.get("CHANGE_HEAD_SHA")
+    if not base_sha or not head_sha:
+        return None
+
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--name-only", f"{base_sha}...{head_sha}"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+    changed_paths = result.stdout.splitlines()
+    if any(
+        path == ".github/workflows/build-images.yml" or path.startswith("scripts/")
+        for path in changed_paths
+    ):
+        return None
+
+    selected = {
+        parts[1]
+        for path in changed_paths
+        if (parts := Path(path).parts)
+        and len(parts) >= 2
+        and parts[0] in {"images", "charts"}
+        and parts[1] in all_names
+    }
+    return selected
+
+
 def main() -> None:
     manifests = sorted((ROOT / "images").glob("*/image.json"))
     if not manifests:
         raise ValueError("no image manifests found under images/*/image.json")
 
     entries = [load_manifest(manifest) for manifest in manifests]
-    selected_names = release_image_names(entries)
+    all_names = {entry["name"] for entry in entries}
+    selected_names = release_image_names(entries) or changed_image_names(all_names)
     if selected_names is not None:
         entries = [entry for entry in entries if entry["name"] in selected_names]
     matrix = json.dumps({"include": entries}, separators=(",", ":"))
