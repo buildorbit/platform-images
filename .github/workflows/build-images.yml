@@ -23,9 +23,12 @@ on:
         default: false
         type: boolean
       release_tag:
-        description: Optional tag to apply to a manually approved release
+        description: Optional semantic tag to apply to a manually approved release, such as 1.2.3
         required: false
         type: string
+  release:
+    types:
+      - published
 
 jobs:
   discover:
@@ -38,6 +41,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
 
       - name: Validate manifests and build matrix
         id: images
@@ -57,6 +62,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
@@ -93,7 +100,7 @@ jobs:
   publish:
     name: Publish image (${{ matrix.name }})
     needs: [discover, build-scan-smoke]
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.publish == true)
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'workflow_dispatch' && inputs.publish == true)
     runs-on: ubuntu-24.04
     environment: release
     strategy:
@@ -106,6 +113,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -123,7 +132,10 @@ jobs:
         with:
           images: ${{ matrix.repository }}
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
+            type=semver,pattern={{major}},enable=${{ github.event_name == 'release' }}
             type=sha,format=long
             type=raw,value=${{ inputs.release_tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' }}
 
