@@ -154,6 +154,7 @@ jobs:
 
       - name: Package and publish Helm chart
         if: matrix.chart != '' && ((github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'workflow_dispatch' && inputs.publish == true && inputs.release_tag != ''))
+        id: chart
         env:
           CHART_PATH: ${{ matrix.chart }}
           CHART_VERSION: ${{ steps.chart_version.outputs.version }}
@@ -162,11 +163,20 @@ jobs:
           package_dir="$RUNNER_TEMP/helm-package"
           mkdir -p "$package_dir"
           helm package "$CHART_PATH" --destination "$package_dir" --version "$CHART_VERSION"
-          helm push "$package_dir/${{ matrix.name }}-${CHART_VERSION}.tgz" "oci://${CHART_REPOSITORY}"
+          push_output="$(helm push "$package_dir/${{ matrix.name }}-${CHART_VERSION}.tgz" "oci://${CHART_REPOSITORY}" 2>&1)"
+          printf '%s\n' "$push_output"
+          chart_digest="$(printf '%s\n' "$push_output" | awk '$1 == "Digest:" { print $2; exit }')"
+          if [[ -z "$chart_digest" ]]; then
+            echo 'Helm did not return a chart digest' >&2
+            exit 1
+          fi
+          echo "digest=$chart_digest" >> "$GITHUB_OUTPUT"
           {
             echo "## Published ${{ matrix.name }} Helm chart"
             echo
             echo "\`${CHART_REPOSITORY}/${{ matrix.name }}:${CHART_VERSION}\`"
+            echo
+            echo "Keeping only package version \`${chart_digest}\` in GHCR."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build and publish
@@ -183,6 +193,21 @@ jobs:
           sbom: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Retain current image package version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_NAME: ${{ github.event.repository.name }}/${{ matrix.name }}
+          KEEP_VERSION_NAME: ${{ steps.build.outputs.digest }}
+        run: bash scripts/retain-ghcr-package-version.sh
+
+      - name: Retain current Helm chart package version
+        if: steps.chart.outputs.digest != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_NAME: ${{ github.event.repository.name }}/charts/${{ matrix.name }}
+          KEEP_VERSION_NAME: ${{ steps.chart.outputs.digest }}
+        run: bash scripts/retain-ghcr-package-version.sh
 
       - name: Record immutable digest
         run: |
