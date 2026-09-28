@@ -47,3 +47,14 @@ Do not commit secrets, provider API keys, private infrastructure details, or dep
 The workflow publishes immutable SHA references for every build. It also publishes semantic tags for GitHub Releases: publishing a release with tag `v0.1.0` produces `0.1.0`, `0.1`, and `0` tags for each image. The `latest` tag is reserved for successful builds from `main`.
 
 The semantic image version is independent of the upstream application version. For example, the OpenBB package version remains documented in [`images/openbb/README.md`](images/openbb/README.md), while the curated image can release as `0.1.0`, `0.1.1`, and so on.
+
+Images with a matching Helm chart also publish an OCI chart from the same GitHub Release. A release tagged `v0.1.0` publishes `oci://ghcr.io/buildorbit/platform-images/charts/openbb` at chart version `0.1.0`:
+
+```sh
+helm upgrade --install openbb oci://ghcr.io/buildorbit/platform-images/charts/openbb \
+  --version 0.1.0 \
+  --set image.repository=ghcr.io/buildorbit/platform-images/openbb \
+  --set image.digest=sha256:<published-digest>
+```
+
+The chart version comes from the release tag; the chart's `appVersion` continues to describe the upstream application version.
