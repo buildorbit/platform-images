@@ -58,3 +58,5 @@ helm upgrade --install openbb oci://ghcr.io/buildorbit/platform-images/charts/op
 ```
 
 The chart version comes from the release tag; the chart's `appVersion` continues to describe the upstream application version.
+
+To control GHCR storage, each successful publish retains only the newly published image package version and, when present, chart package version. Older image tags, release versions, and digests are deleted from GHCR.
