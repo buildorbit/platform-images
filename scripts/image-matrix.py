@@ -72,7 +72,7 @@ def load_manifest(manifest: Path) -> dict[str, object]:
         if not path.exists() or (field == "dockerfile" and not path.is_file()):
             raise ValueError(f"{manifest}: {field} does not exist: {value}")
 
-    for optional_path in ("chart", "smoke_test"):
+    for optional_path in ("chart", "smoke_test", "trivyignore"):
         value = data.get(optional_path, "")
         if value:
             if not isinstance(value, str):
@@ -108,6 +108,7 @@ def load_manifest(manifest: Path) -> dict[str, object]:
         "validation_platform": validation_platform,
         "chart": data.get("chart", ""),
         "smoke_test": data.get("smoke_test", ""),
+        "trivyignore": data.get("trivyignore", ""),
     }
 
 
