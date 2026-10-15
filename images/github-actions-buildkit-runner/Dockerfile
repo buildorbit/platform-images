@@ -1,6 +1,6 @@
-# The ARC chart currently deploys runner v2.334.0. Pin the matching official
+# The ARC chart currently deploys runner v2.338.0. Pin the matching official
 # runner image so the runner and controller remain compatible.
-FROM ghcr.io/actions/actions-runner:2.334.0@sha256:b6614fce332517f74d0a76e7c762fb08e4f2ff13dcf333183397c8a5725b6e8e
+FROM ghcr.io/actions/actions-runner:2.338.0@sha256:4ffadc0002b2581327e06101fc8c06cd189232baf79fe561fac9caeb76f5e807
 
 ARG TARGETARCH
 ARG DOCKER_VERSION=29.9.0
