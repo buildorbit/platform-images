@@ -10,5 +10,6 @@
   ],
   "validation_platform": "linux/amd64",
   "chart": "",
-  "smoke_test": "images/github-actions-buildkit-runner/tests/smoke.sh"
+  "smoke_test": "images/github-actions-buildkit-runner/tests/smoke.sh",
+  "trivyignore": "images/github-actions-buildkit-runner/.trivyignore.yaml"
 }
