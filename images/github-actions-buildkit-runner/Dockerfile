@@ -1,6 +1,6 @@
-# The ARC chart currently deploys runner v2.334.0. Pin the matching official
+# The ARC chart currently deploys runner v2.338.0. Pin the matching official
 # runner image so the runner and controller remain compatible.
-FROM ghcr.io/actions/actions-runner:2.334.0@sha256:b6614fce332517f74d0a76e7c762fb08e4f2ff13dcf333183397c8a5725b6e8e
+FROM ghcr.io/actions/actions-runner:2.338.0@sha256:4ffadc0002b2581327e06101fc8c06cd189232baf79fe561fac9caeb76f5e807
 
 ARG TARGETARCH
 ARG DOCKER_VERSION=29.9.0
@@ -17,6 +17,23 @@ RUN apt-get update \
     && apt-get dist-upgrade --yes \
     && apt-get install --yes --no-install-recommends ca-certificates curl git jq unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# The upstream runner currently bundles a vulnerable undici release in its
+# Node 24 npm installation. Keep the runner base pinned, but replace only this
+# dependency with the fixed release. Download and verify the package directly
+# so npm does not reinstall or execute lifecycle scripts from its full tree.
+RUN set -eux; \
+    undici_root=/home/runner/externals/node24/lib/node_modules/npm/node_modules/undici; \
+    tmp_dir="$(mktemp -d)"; \
+    curl --fail --location --retry 3 --silent --show-error \
+      --output "$tmp_dir/undici.tgz" \
+      https://registry.npmjs.org/undici/-/undici-6.28.1.tgz; \
+    echo 'e18191aac9c0ff43dac7fe9b10b7041a22d07addb7b66a6e8ac14a52a5b69b74  '"$tmp_dir/undici.tgz" | sha256sum --check --status; \
+    rm -rf "$undici_root"; \
+    mkdir -p "$undici_root"; \
+    tar --extract --file "$tmp_dir/undici.tgz" --strip-components 1 --directory "$undici_root" --no-same-owner; \
+    chown -R runner:runner "$undici_root"; \
+    rm -rf "$tmp_dir"
 
 # Install the Docker CLI without a daemon. Workflows install a pinned Buildx
 # action at job time; that keeps the runner image small and lets CI refresh the
