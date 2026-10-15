@@ -31,6 +31,12 @@ RUN set -eux; \
       "https://download.docker.com/linux/static/stable/${docker_arch}/docker-${DOCKER_VERSION}.tgz"; \
     tar --extract --file /tmp/docker.tgz --strip-components 1 --directory /usr/local/bin --no-same-owner docker/docker; \
     rm /tmp/docker.tgz; \
+    # The upstream ARC runner base may ship a system Buildx plugin. Remove it
+    # so the workflow-controlled, patched version is the only Buildx client.
+    rm -f \
+      /usr/libexec/docker/cli-plugins/docker-buildx \
+      /usr/lib/docker/cli-plugins/docker-buildx \
+      /usr/local/lib/docker/cli-plugins/docker-buildx; \
     docker --version
 
 USER runner
