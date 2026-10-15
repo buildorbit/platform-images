@@ -34,6 +34,13 @@ RUN set -eux; \
     # The upstream ARC runner base may ship a system Buildx plugin. Remove it
     # so the workflow-controlled, patched version is the only Buildx client.
     rm -f \
+      /usr/bin/containerd \
+      /usr/bin/containerd-shim-runc-v2 \
+      /usr/bin/ctr \
+      /usr/bin/docker \
+      /usr/bin/dockerd \
+      /usr/bin/docker-init \
+      /usr/bin/docker-compose \
       /usr/libexec/docker/cli-plugins/docker-buildx \
       /usr/lib/docker/cli-plugins/docker-buildx \
       /usr/local/lib/docker/cli-plugins/docker-buildx; \
