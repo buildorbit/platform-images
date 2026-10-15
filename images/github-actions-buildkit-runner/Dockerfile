@@ -14,6 +14,7 @@ LABEL org.opencontainers.image.title="BuildOrbit GitHub Actions BuildKit runner"
 USER root
 
 RUN apt-get update \
+    && apt-get dist-upgrade --yes \
     && apt-get install --yes --no-install-recommends ca-certificates curl git jq unzip \
     && rm -rf /var/lib/apt/lists/*
 
@@ -41,6 +42,8 @@ RUN set -eux; \
       /usr/bin/dockerd \
       /usr/bin/docker-init \
       /usr/bin/docker-compose \
+      /usr/bin/docker-proxy \
+      /usr/bin/runc \
       /usr/libexec/docker/cli-plugins/docker-buildx \
       /usr/lib/docker/cli-plugins/docker-buildx \
       /usr/local/lib/docker/cli-plugins/docker-buildx; \
