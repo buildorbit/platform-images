@@ -18,6 +18,23 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates curl git jq unzip \
     && rm -rf /var/lib/apt/lists/*
 
+# The upstream runner currently bundles a vulnerable undici release in its
+# Node 24 npm installation. Keep the runner base pinned, but replace only this
+# dependency with the fixed release. Download and verify the package directly
+# so npm does not reinstall or execute lifecycle scripts from its full tree.
+RUN set -eux; \
+    undici_root=/home/runner/externals/node24/lib/node_modules/npm/node_modules/undici; \
+    tmp_dir="$(mktemp -d)"; \
+    curl --fail --location --retry 3 --silent --show-error \
+      --output "$tmp_dir/undici.tgz" \
+      https://registry.npmjs.org/undici/-/undici-6.28.1.tgz; \
+    echo 'e18191aac9c0ff43dac7fe9b10b7041a22d07addb7b66a6e8ac14a52a5b69b74  '"$tmp_dir/undici.tgz" | sha256sum --check --status; \
+    rm -rf "$undici_root"; \
+    mkdir -p "$undici_root"; \
+    tar --extract --file "$tmp_dir/undici.tgz" --strip-components 1 --directory "$undici_root" --no-same-owner; \
+    chown -R runner:runner "$undici_root"; \
+    rm -rf "$tmp_dir"
+
 # Install the Docker CLI without a daemon. Workflows install a pinned Buildx
 # action at job time; that keeps the runner image small and lets CI refresh the
 # build client independently from the runner lifecycle.
