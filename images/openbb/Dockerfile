@@ -4,6 +4,12 @@
 # The image is built for linux/amd64 in CI.
 FROM python:3.12-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
 
+# Refresh the pinned Debian base packages so security fixes released after the
+# base image digest are included in the published image.
+RUN apt-get update \
+    && apt-get dist-upgrade --yes \
+    && rm -rf /var/lib/apt/lists/*
+
 ARG OPENBB_VERSION=4.7.2
 ARG OPENBB_PLATFORM_API_VERSION=1.3.6
 
