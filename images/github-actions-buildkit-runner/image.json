@@ -1,0 +1,14 @@
+{
+  "name": "github-actions-buildkit-runner",
+  "version": "0.1.0",
+  "repository": "ghcr.io/buildorbit/platform-images/github-actions-buildkit-runner",
+  "context": ".",
+  "dockerfile": "images/github-actions-buildkit-runner/Dockerfile",
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "validation_platform": "linux/amd64",
+  "chart": "",
+  "smoke_test": "images/github-actions-buildkit-runner/tests/smoke.sh"
+}
