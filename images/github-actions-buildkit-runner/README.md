@@ -2,14 +2,30 @@
 
 This image is the toolchain for the opt-in `buildorbit-image-builders` ARC
 scale set. It contains the GitHub Actions runner inherited from the pinned
-official runner image, the Docker CLI, and a checksum-verified Buildx plugin.
+official runner image and a pinned daemonless Docker CLI.
+
+Buildx is installed by the calling workflow with a pinned
+`docker/setup-buildx-action` release. Keeping Buildx out of the long-lived
+runner image means its security fixes can be adopted independently and the
+image vulnerability gate does not hide findings in a bundled Go binary.
 
 It deliberately does not contain or start a Docker daemon and does not require
 `/var/run/docker.sock`. Workflows use the Docker Buildx Kubernetes driver with
 `rootless=true`; Buildx creates workers in the GitOps-managed `buildkit`
 namespace using the runner's namespaced Kubernetes permissions.
 
-Example workflow setup:
+Example workflow setup (the action version must be pinned in the consuming
+repository):
+
+```yaml
+- uses: docker/setup-buildx-action@v3
+  with:
+    version: v0.38.0
+    driver: kubernetes
+    driver-opts: namespace=buildkit,rootless=true,serviceaccount=buildkit-worker
+```
+
+The resulting builder is used like this:
 
 ```sh
 docker buildx create \
