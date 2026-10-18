@@ -113,6 +113,11 @@ vulnerabilities:
       - pkg:npm/tar
     expired_at: 2026-11-15
     statement: Inherited runner npm dependency; replace with a patched ARC runner image before expiry.
+  - id: CVE-2026-9496
+    paths:
+      - home/runner/externals/node24/lib/node_modules/npm/node_modules/pacote/package.json
+    expired_at: 2026-11-15
+    statement: Inherited runner npm dependency; replace with a patched ARC runner image before expiry.
   - id: CVE-2026-84008
     purls:
       - pkg:nuget/System.Security.Cryptography.Pkcs
