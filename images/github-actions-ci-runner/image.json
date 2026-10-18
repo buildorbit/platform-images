@@ -1,0 +1,13 @@
+{
+  "name": "github-actions-ci-runner",
+  "version": "0.1.0",
+  "repository": "ghcr.io/buildorbit/platform-images/github-actions-ci-runner",
+  "context": ".",
+  "dockerfile": "images/github-actions-ci-runner/Dockerfile",
+  "platforms": [
+    "linux/amd64"
+  ],
+  "validation_platform": "linux/amd64",
+  "chart": "",
+  "smoke_test": "images/github-actions-ci-runner/tests/smoke.sh"
+}
