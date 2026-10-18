@@ -1,0 +1,9 @@
+# Temporary, package-scoped exception for the .NET dependency bundled by the
+# official actions-runner 2.338.0 runtime. It expires on 2026-11-15 and must
+# be removed or refreshed when the ARC runner base image is upgraded.
+vulnerabilities:
+  - id: CVE-2026-84008
+    purls:
+      - pkg:nuget/System.Security.Cryptography.Pkcs
+    expired_at: 2026-11-15
+    statement: Inherited runner .NET dependency; replace with a patched ARC runner image before expiry.
