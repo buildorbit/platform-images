@@ -27,23 +27,6 @@ RUN rm -f /usr/local/bin/npm /usr/local/bin/npx \
     && ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
-# The runner base currently bundles an older undici release in its Node 24
-# action runtime. Replace only that dependency with the fixed release.
-RUN set -eux; \
-    undici_root=/home/runner/externals/node24/lib/node_modules/npm/node_modules/undici; \
-    tmp_dir="$(mktemp -d)"; \
-    apt-get update; \
-    apt-get install --yes --no-install-recommends curl; \
-    curl --fail --location --retry 3 --silent --show-error \
-      --output "$tmp_dir/undici.tgz" \
-      https://registry.npmjs.org/undici/-/undici-6.28.1.tgz; \
-    echo 'e18191aac9c0ff43dac7fe9b10b7041a22d07addb7b66a6e8ac14a52a5b69b74  '"$tmp_dir/undici.tgz" | sha256sum --check --status; \
-    rm -rf "$undici_root"; \
-    mkdir --parents "$undici_root"; \
-    tar --extract --file "$tmp_dir/undici.tgz" --strip-components 1 --directory "$undici_root" --no-same-owner; \
-    chown -R runner:runner "$undici_root"; \
-    rm -rf "$tmp_dir"
-
 # Install Chromium and its native libraries while building this immutable
 # image. Fresh ARC pods therefore do not need apt access during every CI job.
 RUN set -eux; \
@@ -61,12 +44,18 @@ RUN set -eux; \
     rm -rf \
       /root/.cache \
       /var/lib/apt/lists/* \
+      /home/runner/externals/node20/lib/node_modules/npm \
+      /home/runner/externals/node24/lib/node_modules/npm \
       /usr/local/lib/node_modules/npm \
       /usr/local/lib/node_modules/playwright; \
     rm -f \
       /usr/local/bin/npm \
       /usr/local/bin/npx \
       /usr/local/bin/playwright \
+      /home/runner/externals/node20/bin/npm \
+      /home/runner/externals/node20/bin/npx \
+      /home/runner/externals/node24/bin/npm \
+      /home/runner/externals/node24/bin/npx \
       /usr/bin/containerd \
       /usr/bin/containerd-shim-runc-v2 \
       /usr/bin/ctr \
