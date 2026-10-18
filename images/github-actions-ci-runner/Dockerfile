@@ -3,7 +3,7 @@
 FROM node:20-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS node-toolchain
 FROM ghcr.io/actions/actions-runner:2.338.0@sha256:4ffadc0002b2581327e06101fc8c06cd189232baf79fe561fac9caeb76f5e807
 
-ARG PLAYWRIGHT_VERSION=1.55.0
+ARG PLAYWRIGHT_VERSION=1.55.1
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
@@ -27,6 +27,23 @@ RUN rm -f /usr/local/bin/npm /usr/local/bin/npx \
     && ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
+# The runner base currently bundles an older undici release in its Node 24
+# action runtime. Replace only that dependency with the fixed release.
+RUN set -eux; \
+    undici_root=/home/runner/externals/node24/lib/node_modules/npm/node_modules/undici; \
+    tmp_dir="$(mktemp -d)"; \
+    apt-get update; \
+    apt-get install --yes --no-install-recommends curl; \
+    curl --fail --location --retry 3 --silent --show-error \
+      --output "$tmp_dir/undici.tgz" \
+      https://registry.npmjs.org/undici/-/undici-6.28.1.tgz; \
+    echo 'e18191aac9c0ff43dac7fe9b10b7041a22d07addb7b66a6e8ac14a52a5b69b74  '"$tmp_dir/undici.tgz" | sha256sum --check --status; \
+    rm -rf "$undici_root"; \
+    mkdir --parents "$undici_root"; \
+    tar --extract --file "$tmp_dir/undici.tgz" --strip-components 1 --directory "$undici_root" --no-same-owner; \
+    chown -R runner:runner "$undici_root"; \
+    rm -rf "$tmp_dir"
+
 # Install Chromium and its native libraries while building this immutable
 # image. Fresh ARC pods therefore do not need apt access during every CI job.
 RUN set -eux; \
@@ -41,6 +58,26 @@ RUN set -eux; \
     ! ldd "${browser_shell}" | grep -q 'not found'; \
     chown -R runner:runner "${PLAYWRIGHT_BROWSERS_PATH}"; \
     npm cache clean --force; \
-    rm -rf /root/.cache /var/lib/apt/lists/*
+    rm -rf \
+      /root/.cache \
+      /var/lib/apt/lists/* \
+      /usr/local/lib/node_modules/npm \
+      /usr/local/lib/node_modules/playwright; \
+    rm -f \
+      /usr/local/bin/npm \
+      /usr/local/bin/npx \
+      /usr/local/bin/playwright \
+      /usr/bin/containerd \
+      /usr/bin/containerd-shim-runc-v2 \
+      /usr/bin/ctr \
+      /usr/bin/docker \
+      /usr/bin/docker-proxy \
+      /usr/bin/dockerd \
+      /usr/bin/docker-init \
+      /usr/bin/docker-compose \
+      /usr/bin/runc \
+      /usr/libexec/docker/cli-plugins/docker-buildx \
+      /usr/lib/docker/cli-plugins/docker-buildx \
+      /usr/local/lib/docker/cli-plugins/docker-buildx
 
 USER runner

@@ -6,9 +6,9 @@ image_ref="${1:?image reference is required}"
 docker run --rm --entrypoint /bin/bash "${image_ref}" -ceu '
   test "$(id -u)" -eq 1001
   node --version
-  npm --version
-  test "$(playwright --version)" = "Version 1.55.0"
   test "${PLAYWRIGHT_BROWSERS_PATH}" = /ms-playwright
+  ! command -v docker
+  test ! -e /var/run/docker.sock
   browser_shell="$(find "${PLAYWRIGHT_BROWSERS_PATH}" -type f -perm -111 \( -name chrome-headless-shell -o -name chrome \) | head -n 1)"
   test -n "${browser_shell}"
   test -x "${browser_shell}"
