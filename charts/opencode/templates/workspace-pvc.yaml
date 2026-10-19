@@ -1,0 +1,17 @@
+{{- if .Values.workspacePersistence.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "opencode.fullname" . }}-workspace
+  labels:
+    {{- include "opencode.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.workspacePersistence.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.workspacePersistence.size }}
+  {{- if .Values.workspacePersistence.storageClassName }}
+  storageClassName: {{ .Values.workspacePersistence.storageClassName | quote }}
+  {{- end }}
+{{- end }}
