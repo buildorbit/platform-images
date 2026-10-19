@@ -14,6 +14,8 @@ ENV HOME=/home/opencode \
     XDG_DATA_HOME=/home/opencode/.local/share \
     OPENCODE_CONFIG=/etc/opencode/opencode.json
 
+# npm and Corepack are removed after installing OpenCode; they are not needed
+# at runtime and carry their own transitive dependencies.
 RUN apt-get update \
     && apt-get dist-upgrade --yes \
     && npm install --global "opencode-ai@${OPENCODE_VERSION}" \
@@ -21,6 +23,8 @@ RUN apt-get update \
     && useradd --uid 10001 --gid 10001 --create-home --home-dir /home/opencode --shell /usr/sbin/nologin opencode \
     && mkdir -p /home/opencode/.local/share/opencode /etc/opencode \
     && chown -R 10001:10001 /home/opencode \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+        /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
     && rm -rf /var/lib/apt/lists/*
 
 COPY images/opencode/opencode.json /etc/opencode/opencode.json
