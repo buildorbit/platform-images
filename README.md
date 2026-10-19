@@ -13,6 +13,14 @@ scripts/              Manifest validation and repository-level helpers
 
 ## Images
 
+### OpenCode Web
+
+The OpenCode image runs the web UI as a non-root service. Its matching Helm
+chart adds an Nginx sidecar that injects a persistent public-session banner,
+requires an existing Kubernetes Secret for OpenCode Basic Auth, and persists
+session state on a PVC. See [`images/opencode/`](images/opencode/) and the
+[OpenCode chart README](charts/opencode/README.md).
+
 ### OpenBB Platform
 
 The curated OpenBB image is defined in [`images/openbb/`](images/openbb/). It is a non-root `linux/amd64` API image with OpenBB metadata generated during the image build. See the [OpenBB image README](images/openbb/README.md) for its upstream source, licenses, update procedure, and digest-based deployment instructions.

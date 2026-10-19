@@ -1,0 +1,13 @@
+{
+  "name": "opencode",
+  "version": "0.1.0",
+  "repository": "ghcr.io/buildorbit/platform-images/opencode",
+  "context": ".",
+  "dockerfile": "images/opencode/Dockerfile",
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "validation_platform": "linux/amd64",
+  "chart": "charts/opencode"
+}

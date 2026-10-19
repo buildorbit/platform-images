@@ -13,6 +13,11 @@ images/<name>/
 
 The matching Helm chart, when the image is deployable on Kubernetes, lives at `charts/<name>/`.
 
+The OpenCode image includes the web server runtime; its chart adds a colocated
+Nginx banner proxy and persistent session storage. OpenCode's native server
+authentication is HTTP Basic Auth; use a separate OIDC-aware ingress/auth
+proxy for SSO.
+
 ## `image.json`
 
 The manifest uses repository-relative paths and is the source of truth for the generic GitHub Actions workflow:
