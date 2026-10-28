@@ -32,17 +32,22 @@ layer by default. To let the ingress SSO layer handle authentication, set
 `auth.enabled=false` and ensure users cannot bypass the ingress to reach the
 Service. The chart's built-in Ingress is optional and does not configure SSO.
 
+The OpenCode container uses a read-only root filesystem. Persistent session data
+and workspace files are stored on PVCs. Runtime state, configuration, cache,
+temporary files, and lock files use ephemeral `emptyDir` mounts; runtime locks
+must not be persisted across pod replacements.
+
 For production, use the published OCI chart and an immutable image digest:
 
 ```sh
 helm upgrade --install opencode oci://ghcr.io/buildorbit/platform-images/charts/opencode \
-  --version 0.1.0 \
+  --version 0.1.1 \
   --set auth.existingSecret=opencode-auth \
   --set image.repository=ghcr.io/buildorbit/platform-images/opencode \
   --set image.digest=sha256:<published-digest>
 ```
 
-Session state, including OpenCode provider credentials added through its auth
+Session data, including OpenCode provider credentials added through its auth
 flow, is stored on the PVC. Protect the PVC and backups accordingly. The
 default banner is configurable through `banner.text`; word it to reflect the
 actual data handling policy.
