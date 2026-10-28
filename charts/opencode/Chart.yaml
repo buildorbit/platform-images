@@ -2,7 +2,7 @@ apiVersion: v2
 name: opencode
 description: Deploy OpenCode Web with a public-session banner proxy.
 type: application
-version: 0.1.0
+version: 0.1.1
 appVersion: "1.19.3"
 home: https://github.com/buildorbit/platform-images
 sources:
