@@ -35,6 +35,32 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.config.existingConfigMap }}
+      initContainers:
+        - name: initialize-config
+          image: {{ .Values.config.initImage | quote }}
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c"]
+          args:
+            - >-
+              mkdir -p /config/opencode &&
+              cp /seed/opencode.json /config/opencode/opencode.json
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: config-seed
+              mountPath: /seed
+              readOnly: true
+      {{- end }}
       containers:
         - name: opencode
           image: {{ include "opencode.image" . | quote }}
@@ -45,8 +71,9 @@ spec:
             - name: app
               containerPort: 4096
               protocol: TCP
-          {{- if .Values.auth.enabled }}
+          {{- if or .Values.auth.enabled .Values.extraEnv }}
           env:
+          {{- if .Values.auth.enabled }}
             - name: OPENCODE_SERVER_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -57,6 +84,10 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.auth.existingSecret | quote }}
                   key: {{ .Values.auth.passwordKey | quote }}
+          {{- end }}
+          {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- end }}
           volumeMounts:
             - name: data
@@ -112,6 +143,15 @@ spec:
           emptyDir: {}
         - name: config
           emptyDir: {}
+        {{- if .Values.config.existingConfigMap }}
+        - name: config-seed
+          configMap:
+            name: {{ .Values.config.existingConfigMap | quote }}
+            items:
+              - key: opencode.json
+                path: opencode.json
+        {{- end }}
+
         - name: nginx-tmp
           emptyDir: {}
         - name: nginx-run
