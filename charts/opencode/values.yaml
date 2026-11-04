@@ -33,6 +33,16 @@ auth:
   existingSecret: ""
   usernameKey: username
   passwordKey: password
+
+# Optional non-secret runtime environment values. Use valueFrom.secretKeyRef
+# for credentials; the chart does not embed secret values.
+extraEnv: []
+
+# Optional GitOps-managed OpenCode configuration. The ConfigMap is copied into
+# the writable config volume so OpenCode can create its runtime state files.
+config:
+  existingConfigMap: ""
+  initImage: busybox:1.37.0
 banner:
   text: "PUBLIC SESSION — information is used for training; do not enter sensitive data."
 service:
