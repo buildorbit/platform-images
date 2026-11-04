@@ -51,3 +51,27 @@ Session data, including OpenCode provider credentials added through its auth
 flow, is stored on the PVC. Protect the PVC and backups accordingly. The
 default banner is configurable through `banner.text`; word it to reflect the
 actual data handling policy.
+
+
+## GitOps-managed runtime configuration
+
+Set `config.existingConfigMap` to a ConfigMap containing an `opencode.json`
+key. The chart copies that file into the writable OpenCode config directory at
+pod startup. This avoids mounting the ConfigMap directly over the directory,
+because OpenCode needs to write runtime files such as `.gitignore`.
+
+Use `extraEnv` for selected Secret-backed variables:
+
+```yaml
+extraEnv:
+  - name: EXAMPLE_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: opencode-mcp-credentials
+        key: EXAMPLE_TOKEN
+```
+
+Changing the ConfigMap or referenced Secret should trigger a controlled pod
+restart through the consuming deployment's reload policy. Secret values must be
+delivered by the cluster secret-management workflow and must not be placed in
+the ConfigMap or chart values.
